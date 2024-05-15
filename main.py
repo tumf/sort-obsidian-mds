@@ -58,6 +58,7 @@ def generate_title(file_path, max_retries=5, delay=1) -> str:
             tool_choice="auto",
             temperature=0.5,
         )
+
         # get tool call
         tool_call = response.choices[0].message.tool_calls[0]
         args = json.loads(tool_call.function.arguments)
