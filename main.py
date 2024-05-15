@@ -3,6 +3,7 @@ import sys
 import re
 from litellm import completion
 import json
+import time
 
 
 # /Users/tumf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Inbox/Untitled 1.md
@@ -37,28 +38,43 @@ tools = [
 ]
 
 
-def generate_title(file_path):
-    with open(file_path, "r") as file:
-        content = file.read()
-    prompt = """
-    Generate a title as title of filename in 20 chars or less for the following markdown content and register it.
-    DO NOT USE special chars except for `!@%^+-_` in the title.
-    """
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": content},
-    ]
-    response = completion(
-        messages=messages,
-        model="gpt-4o",
-        tools=tools,
-        tool_choice="auto",
-        temperature=0.5,
-    )
-    # get tool call
-    tool_call = response.choices[0].message.tool_calls[0]
-    args = json.loads(tool_call.function.arguments)
-    return args["title"]
+def generate_title(file_path, max_retries=5, delay=1) -> str:
+
+    def try_generate_title(file_path) -> str:
+        with open(file_path, "r") as file:
+            content = file.read()
+        prompt = """
+        Generate a title as title of filename in 20 chars or less for the following markdown content and register it.
+        DO NOT USE special chars except for `!@%^+-_` in the title.
+        """
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": content},
+        ]
+        response = completion(
+            messages=messages,
+            model="gpt-4o",
+            tools=tools,
+            tool_choice="auto",
+            temperature=0.5,
+        )
+        # get tool call
+        tool_call = response.choices[0].message.tool_calls[0]
+        args = json.loads(tool_call.function.arguments)
+        return args["title"]
+
+    attempts = 0
+    while attempts < max_retries:
+        try:
+            title = try_generate_title(file_path)
+            return title
+        except Exception as e:
+            attempts += 1
+            print(f"Attempt {attempts} failed: {e}")
+            if attempts < max_retries:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+    raise Exception("All attempts failed.")
 
 
 if __name__ == "__main__":
