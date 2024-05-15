@@ -56,6 +56,24 @@ class TestMain(unittest.TestCase):
 
         self.assertEqual(result, "TestTitle")
 
+    @patch("main.completion")
+    def test_generate_title_no_tool_calls(self, mock_completion):
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message = Mock()
+        mock_response.choices[0].message.tool_calls = []
+
+        mock_completion.return_value = mock_response
+
+        file_content = "# Sample Markdown Content"
+        mock_open_obj = mock_open(read_data=file_content)
+
+        with patch("builtins.open", mock_open_obj):
+            with self.assertRaises(Exception) as context:
+                generate_title("/path/to/mock/file.md")
+
+        self.assertTrue("All attempts failed." in str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
