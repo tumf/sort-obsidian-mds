@@ -9,3 +9,14 @@ you should set `OPENAI_API_KEY`.
 $ python main.py
 Usage: python main.py <directory>
 ```
+
+## test
+
+```shell
+$ python -m unittest test_main.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 4.073s
+
+OK
+```

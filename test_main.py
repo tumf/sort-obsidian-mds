@@ -1,8 +1,9 @@
 import unittest
 import os
+import sys
 import tempfile
 from unittest.mock import patch, mock_open, Mock
-from main import search_untitled_files, generate_title
+from main import search_untitled_files, generate_title, main
 import json
 
 
@@ -68,11 +69,67 @@ class TestMain(unittest.TestCase):
         file_content = "# Sample Markdown Content"
         mock_open_obj = mock_open(read_data=file_content)
 
-        with patch("builtins.open", mock_open_obj):
+        with patch("builtins.open", mock_open_obj), patch("builtins.print"):
             with self.assertRaises(Exception) as context:
                 generate_title("/path/to/mock/file.md")
 
         self.assertTrue("All attempts failed." in str(context.exception))
+
+    @patch("main.os")
+    @patch("main.generate_title")
+    @patch("main.search_untitled_files")
+    def test_main(self, mock_search_untitled_files, mock_generate_title, mock_os):
+        mock_search_untitled_files.return_value = ["file1.md", "file2.md"]
+        mock_generate_title.return_value = "GeneratedTitle"
+        mock_os.path.getsize.side_effect = [
+            100,  # file1.md is 100 byte
+            0,  # file2.md is 0 byte
+        ]
+        mock_os.path.exists.return_value = False
+        mock_os.path.join.side_effect = lambda *args: "/".join(args)
+        mock_os.path.dirname.side_effect = lambda p: "mock_dir"
+
+        with patch("sys.argv", ["main.py", self.test_dir.name]), patch(
+            "builtins.print"
+        ):
+            main(sys.argv)
+
+        mock_search_untitled_files.assert_called_once_with(self.test_dir.name)
+        mock_generate_title.assert_called_once_with("file1.md")
+        mock_os.remove.assert_called_once_with("file2.md")
+        mock_os.rename.assert_called_once_with("file1.md", "mock_dir/GeneratedTitle.md")
+
+    def test_main_no_arguments(self):
+        with patch("sys.argv", ["main.py"]), patch("builtins.print") as mock_print:
+            with self.assertRaises(SystemExit) as cm:
+                main(sys.argv)
+            mock_print.assert_called_once_with("Usage: python main.py <directory>")
+            self.assertEqual(cm.exception.code, 1)
+
+    @patch("main.os")
+    @patch("main.generate_title")
+    @patch("main.search_untitled_files")
+    def test_main_rename_file_exists(
+        self, mock_search_untitled_files, mock_generate_title, mock_os
+    ):
+        mock_search_untitled_files.return_value = ["file1.md"]
+        mock_generate_title.return_value = "GeneratedTitle"
+        mock_os.path.getsize.return_value = 100
+        mock_os.path.exists.side_effect = lambda p: p == "mock_dir/GeneratedTitle.md"
+        mock_os.path.join.side_effect = lambda *args: "/".join(args)
+        mock_os.path.dirname.side_effect = lambda p: "mock_dir"
+
+        with patch("sys.argv", ["main.py", self.test_dir.name]), patch(
+            "builtins.print"
+        ) as mock_print:
+            main(sys.argv)
+
+        mock_search_untitled_files.assert_called_once_with(self.test_dir.name)
+        mock_generate_title.assert_called_once_with("file1.md")
+        mock_os.rename.assert_not_called()
+        mock_print.assert_any_call(
+            "File mock_dir/GeneratedTitle.md already exists. Skipping."
+        )
 
 
 if __name__ == "__main__":

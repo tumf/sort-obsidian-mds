@@ -6,7 +6,6 @@ import json
 import time
 
 
-# /Users/tumf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Inbox/Untitled 1.md
 def search_untitled_files(directory) -> [str]:
     untitled_files = []
     for root, dirs, files in os.walk(directory):
@@ -78,12 +77,12 @@ def generate_title(file_path, max_retries=5, delay=1) -> str:
     raise Exception("All attempts failed.")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
+def main(argv):
+    if len(argv) != 2:
         print("Usage: python main.py <directory>")
         sys.exit(1)
 
-    directory = sys.argv[1]
+    directory = argv[1]
     untitled_files = search_untitled_files(directory)
     for file in untitled_files:
         # remove if file size zero
@@ -100,3 +99,7 @@ if __name__ == "__main__":
             continue
         os.rename(file, new_file_path)
         print(f"Renaming {file} to {new_file_path}")
+
+
+if __name__ == "__main__":
+    main(sys.argv)
