@@ -1,10 +1,11 @@
-import unittest
+import json
 import os
 import sys
 import tempfile
-from unittest.mock import patch, mock_open, Mock
-from main import search_untitled_files, generate_title, main
-import json
+import unittest
+from unittest.mock import Mock, mock_open, patch
+
+from main import generate_title, main, search_untitled_files
 
 
 class TestMain(unittest.TestCase):
