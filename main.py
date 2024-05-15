@@ -2,6 +2,7 @@ import os
 import sys
 import re
 from litellm import completion
+import json
 
 
 # /Users/tumf/Library/Mobile Documents/iCloud~md~obsidian/Documents/Inbox/Untitled 1.md
@@ -15,18 +16,49 @@ def search_untitled_files(directory) -> [str]:
     return untitled_files
 
 
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "register_title",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "title to register",
+                    }
+                },
+                "required": ["title"],
+            },
+            "description": "Register the title.",
+        },
+    }
+]
+
+
 def generate_title(file_path):
     with open(file_path, "r") as file:
         content = file.read()
     prompt = """
-    Generate a title as title of filename in 20 chars or less for the following markdown content.
+    Generate a title as title of filename in 20 chars or less for the following markdown content and register it.
+    DO NOT USE special chars except for `!@%^+-_` in the title.
     """
     messages = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": content},
     ]
-    response = completion(messages=messages, model="gpt-4o")
-    return response.choices[0].message.content
+    response = completion(
+        messages=messages,
+        model="gpt-4o",
+        tools=tools,
+        tool_choice="auto",
+        temperature=0.5,
+    )
+    # get tool call
+    tool_call = response.choices[0].message.tool_calls[0]
+    args = json.loads(tool_call.function.arguments)
+    return args["title"]
 
 
 if __name__ == "__main__":
